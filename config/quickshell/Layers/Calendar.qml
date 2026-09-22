@@ -10,6 +10,13 @@ Scope {
     property bool shouldShow: false
     property var targetScreen: null
     property bool contentVisible: false
+    property int dayOffset: 0
+
+    readonly property var currentDate: {
+        var d = new Date(Dat.Time.now);
+        d.setDate(d.getDate() + root.dayOffset);
+        return d;
+    }
 
     Wid.P3rTransition3 {
         id: calTransition
@@ -46,6 +53,7 @@ Scope {
                     calTransition.shouldShow = true;
                 } else {
                     contentVisible = false;
+                    root.dayOffset = 0; // Remet à aujourd'hui quand on ferme
                 }
             }
 
@@ -103,21 +111,21 @@ Scope {
                 y: parent.height * 0.1
                 spacing: -20
                 Text {
-                    text: Dat.Time.now.getFullYear()
+                    text: root.currentDate.getFullYear()
                     font.family: "Montserrat"
                     font.pixelSize: 60
                     font.bold: true
                     color: "white"
                 }
                 Text {
-                    text: Qt.formatDate(Dat.Time.now, "MMMM")
+                    text: Qt.formatDate(root.currentDate, "MMMM")
                     font.family: "Microsoft Yahei"
                     font.pixelSize: 30
                     font.bold: true
                     color: "#b4c8ff"
                 }
                 Text {
-                    text: Dat.Time.now.getMonth() + 1
+                    text: root.currentDate.getMonth() + 1
                     x: 200
                     topPadding: -100
                     font.family: "Microsoft Yahei"
@@ -139,7 +147,7 @@ Scope {
                         required property int index
                         readonly property int offset: index - 3
                         readonly property var entryDate: {
-                            var d = new Date(Dat.Time.now);
+                            var d = new Date(root.currentDate);
                             d.setDate(d.getDate() + offset);
                             d.setHours(12, 0, 0, 0);
                             return d;
@@ -158,16 +166,34 @@ Scope {
                 }
             }
 
+MouseArea {
+    anchors.fill: parent
+    z: 1
+    onWheel: wheel => {
+        if (wheel.angleDelta.y < 0) {
+            root.dayOffset += 1;
+        } else if (wheel.angleDelta.y > 0) {
+            root.dayOffset -= 1;
+        }
+    }
+}
             // ── Dismiss ──
             FocusScope {
                 anchors.fill: parent
                 focus: visible
                 z: 3
-                MouseArea {
-                    anchors.fill: parent
-                    z: -1
-                    onClicked: root.shouldShow = false
-                }
+MouseArea {
+    anchors.fill: parent
+    z: -1
+    acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+    onClicked: mouse => {
+        if (mouse.button === Qt.MiddleButton) {
+            root.dayOffset = 0;
+        } else {
+            root.shouldShow = false;
+        }
+    }
+}
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_Escape) {
                         root.shouldShow = false;
