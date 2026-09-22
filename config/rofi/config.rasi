@@ -1,0 +1,76 @@
+configuration {
+    font: "Montserrat Light 11";
+    show-icons: false;
+    display-dmenu: " ";
+}
+
+* {
+    bg: #0f141c;
+    bg-alt: #1a2230;
+    fg: #e2e8f0;
+    accent: #38bdf8;
+    border-col: #1e293b;
+
+    background-color: transparent;
+    text-color: @fg;
+    margin: 0;
+    padding: 0;
+}
+
+window {
+    transparency: "real";
+    background-color: @bg;
+    border: 2px solid;
+    border-color: @accent;
+    border-radius: 12px;
+    width: 650px;
+    padding: 15px;
+}
+
+mainbox {
+    children: [ inputbar, listview ];
+    spacing: 12px;
+}
+
+inputbar {
+    background-color: @bg-alt;
+    border-radius: 8px;
+    padding: 10px 14px;
+    children: [ prompt, entry ];
+    spacing: 10px;
+}
+
+prompt {
+    text-color: @accent;
+}
+
+entry {
+    placeholder: "Rechercher...";
+    placeholder-color: #64748b;
+}
+
+listview {
+    lines: 8;
+    columns: 1;
+    spacing: 6px;
+    scrollbar: false;
+}
+
+element {
+    padding: 8px 12px;
+    border-radius: 6px;
+}
+
+element normal.normal {
+    background-color: transparent;
+    text-color: @fg;
+}
+
+element selected.normal {
+    background-color: @accent;
+    text-color: #0b1120;
+}
+element alternate.normal {
+    background-color: transparent;
+    text-color: @fg;
+}
