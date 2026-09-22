@@ -332,6 +332,10 @@ hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("hyprlock"))
 
 -- Presse-Papier
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("cliphist list | rofi -dmenu -p 'Presse-papier' | cliphist decode | wl-copy"))
+
+-- Sélecteur d'émojis Rofi avec saisie automatique
+hl.bind(mainMod .. " + semicolon", hl.dsp.exec_cmd("rofi -modi emoji -show emoji -emoji-format '{emoji}' | head -n 1 | tr -d '\\n' | wtype -"))
+
 --------------------------------
 ---- WINDOWS AND WORKSPACES ----
 --------------------------------

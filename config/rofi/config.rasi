@@ -45,6 +45,7 @@ prompt {
 }
 
 entry {
+    text-color: #ffffff;
     placeholder: "Rechercher...";
     placeholder-color: #64748b;
 }
