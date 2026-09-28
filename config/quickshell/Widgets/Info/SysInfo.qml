@@ -6,6 +6,10 @@ import QtQuick
 Singleton {
     id: root
     property bool active: false
+    onActiveChanged: {
+        if (active)
+            vramProc.running = true;
+    }
     readonly property real cpuUsage: _cpuUsage
     property real _cpuUsage: 0
     property real _lastCpuIdle: 0
@@ -14,6 +18,10 @@ Singleton {
     property real _memTotal: 1
     readonly property real memUsage: _memTotal > 0 ? _memUsed / _memTotal : 0
     readonly property string memText: (_memUsed / 1073741824).toFixed(1) + " / " + (_memTotal / 1073741824).toFixed(1) + " GB"
+    property real _vramUsed: 0
+    property real _vramTotal: 0
+    readonly property real vramUsage: _vramTotal > 0 ? _vramUsed / _vramTotal : 0
+    readonly property string vramText: _vramTotal > 0 ? (_vramUsed / 1073741824).toFixed(1) + " / " + (_vramTotal / 1073741824).toFixed(1) + " GB" : "N/A"
     property real _diskUsed: 0
     property real _diskTotal: 1
     readonly property real diskUsage: _diskTotal > 0 ? _diskUsed / _diskTotal : 0
@@ -50,6 +58,20 @@ Singleton {
             if (total > 0) {
                 root._memTotal = total * 1024;
                 root._memUsed = (total - avail) * 1024;
+            }
+        }
+    }
+
+    Process {
+        id: vramProc
+        command: ["sh", "-c", "if command -v nvidia-smi >/dev/null 2>&1; then out=$(nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader,nounits 2>/dev/null | head -n1); if [ -n \"$out\" ]; then echo \"$out\" | awk -F',' '{print ($1*1048576)\" \"($2*1048576)}'; exit 0; fi; fi; for f in /sys/class/drm/card*/device/mem_info_vram_total; do if [ -f \"$f\" ]; then total=$(cat \"$f\"); used=$(cat \"${f%_total}_used\"); if [ \"$total\" -gt 0 ]; then echo \"$used $total\"; exit 0; fi; fi; done; echo '0 0'"]
+        stdout: SplitParser {
+            onRead: data => {
+                const parts = data.trim().split(/\s+/);
+                if (parts.length >= 2) {
+                    root._vramUsed = parseInt(parts[0]) || 0;
+                    root._vramTotal = parseInt(parts[1]) || 0;
+                }
             }
         }
     }
@@ -98,6 +120,7 @@ Singleton {
         onTriggered: {
             cpuFile.reload();
             memFile.reload();
+            vramProc.running = true;
         }
     }
     Timer {

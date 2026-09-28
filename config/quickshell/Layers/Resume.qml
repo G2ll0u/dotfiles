@@ -16,8 +16,10 @@ Scope {
         target: root
         function onShouldShowChanged() {
             Info.SysInfo.active = root.shouldShow;
-            if (root.shouldShow)
+            if (root.shouldShow) {
                 Info.NetInfo.scanNetworks();
+                contentRoot.expandedSsid = "";
+            }
         }
     }
     Wid.P3rTransition {
@@ -78,6 +80,8 @@ Scope {
                 z: 3
                 visible: root.contentVisible
                 property int activeCard: 0
+                property string expandedSsid: ""
+                onActiveCardChanged: expandedSsid = ""
                 Column {
                     anchors {
                         left: parent.left
@@ -408,107 +412,371 @@ Scope {
                             Repeater {
                                 model: {
                                     var ac = detailPanel.parent.activeCard;
-                                    var _ = Info.SysInfo.cpuUsage + Info.SysInfo.memUsage + Info.SysInfo.diskUsage;
-                                    return [[
+                                    var _ = Info.SysInfo.cpuUsage + Info.SysInfo.memUsage + Info.SysInfo.vramUsage + Info.SysInfo.diskUsage + (Info.NetInfo.connectingSsid ? 1 : 0);
+                                    return [
+                                        [
                                             {
+                                                type: "stat",
                                                 title: "OS",
                                                 status: Info.SysInfo.osName
                                             },
                                             {
+                                                type: "stat",
                                                 title: "CPU",
                                                 status: Math.round(Info.SysInfo.cpuUsage * 100) + "%"
                                             },
                                             {
+                                                type: "stat",
                                                 title: "RAM",
                                                 status: Info.SysInfo.memText
                                             },
                                             {
+                                                type: "stat",
+                                                title: "VRAM",
+                                                status: Info.SysInfo.vramText
+                                            },
+                                            {
+                                                type: "stat",
                                                 title: "DISK",
                                                 status: Info.SysInfo.diskText
                                             },
                                             {
+                                                type: "stat",
                                                 title: "Users",
                                                 status: Info.SysInfo.loggedInUsers
                                             },
-                                        ], Info.NetInfo.networks.map((n, i) => ({
-                                                    title: n.ssid,
-                                                    status: n.active ? "Connected" : (n.strength + "%")
-                                                })), Info.BluetoothInfo.friendlyDeviceList.length === 0 ? [
+                                        ],
+                                        Info.NetInfo.networks.map(n => ({
+                                            type: "wifi",
+                                            raw: n,
+                                            title: n.ssid,
+                                            bssid: n.bssid,
+                                            active: n.active,
+                                            isSecure: n.isSecure,
+                                            strength: n.strength,
+                                            status: Info.NetInfo.connectingSsid === n.ssid
+                                                    ? "Connecting..."
+                                                    : (n.active ? "Connected" : (n.strength + "%"))
+                                        })),
+                                        Info.BluetoothInfo.friendlyDeviceList.length === 0 ? [
                                             {
+                                                type: "bt_empty",
                                                 title: Info.BluetoothInfo.available ? "Bluetooth Off" : "No Adapter",
                                                 status: Info.BluetoothInfo.enabled ? "No Devices" : "Disabled"
                                             }
                                         ] : Info.BluetoothInfo.friendlyDeviceList.map(d => ({
-                                                    title: d.name,
-                                                    status: d.connected ? "Connected" : (d.paired ? "Paired" : "Found")
-                                                })), [],][ac];
+                                            type: "bt",
+                                            raw: d,
+                                            title: d.name,
+                                            status: d.connected ? "Connected" : (d.paired ? "Paired" : "Found"),
+                                            connected: d.connected,
+                                            paired: d.paired
+                                        })),
+                                        []
+                                    ][ac];
                                 }
 
                                 Item {
+                                    id: rowItem
                                     required property var modelData
                                     width: detailPanel.width
-                                    height: 56
+                                    height: isExpanded ? 114 : 56
+                                    clip: true
 
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        color: Qt.rgba(8 / 255, 18 / 255, 72 / 255, 0.96)
-                                        radius: 2
+                                    readonly property bool isInteractive: modelData.type === "wifi" || modelData.type === "bt"
+                                    readonly property bool isExpanded: modelData.type === "wifi" && contentRoot.expandedSsid === modelData.title
+                                    readonly property bool isConnecting: modelData.type === "wifi" && Info.NetInfo.connectingSsid === modelData.title
+                                    readonly property bool isHovered: itemMouseArea.containsMouse
+
+                                    Behavior on height {
+                                        NumberAnimation {
+                                            duration: 200
+                                            easing.type: Easing.OutCubic
+                                        }
                                     }
 
-                                    Row {
-                                        anchors {
-                                            fill: parent
-                                            leftMargin: 14
-                                            rightMargin: 14
-                                        }
-                                        spacing: 14
+                                    Rectangle {
+                                        id: itemBg
+                                        anchors.fill: parent
+                                        color: rowItem.isHovered && rowItem.isInteractive
+                                               ? Qt.rgba(14 / 255, 30 / 255, 105 / 255, 0.98)
+                                               : Qt.rgba(8 / 255, 18 / 255, 72 / 255, 0.96)
+                                        radius: 2
+                                        border.color: rowItem.isExpanded ? "#8df6ff" : (rowItem.isHovered && rowItem.isInteractive ? "#4da6ff" : "transparent")
+                                        border.width: (rowItem.isExpanded || (rowItem.isHovered && rowItem.isInteractive)) ? 1.5 : 0
 
-                                        Text {
-                                            text: modelData.title
-                                            font.family: "Montserrat"
-                                            font.pixelSize: 24
-                                            color: "#f2fcff"
-                                            anchors.verticalCenter: parent.verticalCenter
+                                        Behavior on color {
+                                            ColorAnimation { duration: 150 }
                                         }
-                                        Item {
-                                            width: 1
-                                            height: 1
+                                    }
+
+                                    // Main Row Header
+                                    Item {
+                                        id: headerRow
+                                        anchors {
+                                            left: parent.left
+                                            right: parent.right
+                                            top: parent.top
                                         }
-                                        Item {
-                                            width: statusText.implicitWidth + 28
-                                            height: 34
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            Canvas {
-                                                id: statusCanvas
-                                                anchors.fill: parent
-                                                onWidthChanged: requestPaint()
-                                                Connections {
-                                                    target: root
-                                                    function onContentVisibleChanged() {
-                                                        if (root.contentVisible)
+                                        height: 56
+
+                                        Row {
+                                            anchors {
+                                                fill: parent
+                                                leftMargin: 14
+                                                rightMargin: 14
+                                            }
+                                            spacing: 12
+
+                                            Text {
+                                                text: modelData.title
+                                                font.family: "Montserrat"
+                                                font.pixelSize: 22
+                                                font.bold: rowItem.isHovered && rowItem.isInteractive
+                                                color: (rowItem.isHovered && rowItem.isInteractive) ? "#8df6ff" : "#f2fcff"
+                                                elide: Text.ElideRight
+                                                width: Math.min(implicitWidth, parent.width - statusBadge.width - (modelData.isSecure ? 50 : 26))
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+
+                                            Text {
+                                                visible: modelData.isSecure === true
+                                                text: "🔒"
+                                                font.pixelSize: 13
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                opacity: 0.6
+                                            }
+
+                                            Item {
+                                                width: 1
+                                                height: 1
+                                            }
+
+                                            Item {
+                                                id: statusBadge
+                                                width: statusText.implicitWidth + 28
+                                                height: 34
+                                                anchors.verticalCenter: parent.verticalCenter
+
+                                                Canvas {
+                                                    id: statusCanvas
+                                                    anchors.fill: parent
+                                                    onWidthChanged: requestPaint()
+                                                    Connections {
+                                                        target: root
+                                                        function onContentVisibleChanged() {
+                                                            if (root.contentVisible)
+                                                                statusCanvas.requestPaint();
+                                                        }
+                                                    }
+                                                    Connections {
+                                                        target: statusText
+                                                        function onTextChanged() {
                                                             statusCanvas.requestPaint();
+                                                        }
+                                                    }
+                                                    onPaint: {
+                                                        var ctx = getContext("2d");
+                                                        ctx.clearRect(0, 0, width, height);
+                                                        ctx.beginPath();
+                                                        ctx.moveTo(0, 0);
+                                                        ctx.lineTo(width, 0);
+                                                        ctx.lineTo(width - 8, height);
+                                                        ctx.lineTo(0, height);
+                                                        ctx.closePath();
+                                                        if (modelData.active || modelData.connected) {
+                                                            ctx.fillStyle = "#8df6ff";
+                                                        } else if (modelData.type === "wifi" && Info.NetInfo.connectingSsid === modelData.title) {
+                                                            ctx.fillStyle = "#ffd56b";
+                                                        } else {
+                                                            ctx.fillStyle = "#8df6ff";
+                                                        }
+                                                        ctx.fill();
                                                     }
                                                 }
-                                                onPaint: {
-                                                    var ctx = getContext("2d");
-                                                    ctx.clearRect(0, 0, width, height);
-                                                    ctx.beginPath();
-                                                    ctx.moveTo(0, 0);
-                                                    ctx.lineTo(width, 0);
-                                                    ctx.lineTo(width - 8, height);
-                                                    ctx.lineTo(0, height);
-                                                    ctx.closePath();
-                                                    ctx.fillStyle = "#8df6ff";
-                                                    ctx.fill();
+
+                                                Text {
+                                                    id: statusText
+                                                    anchors.centerIn: parent
+                                                    text: modelData.status
+                                                    font.family: "Montserrat"
+                                                    font.pixelSize: 16
+                                                    font.bold: true
+                                                    color: "#06133b"
                                                 }
                                             }
-                                            Text {
-                                                id: statusText
-                                                anchors.centerIn: parent
-                                                text: modelData.status
-                                                font.family: "Montserrat"
-                                                font.pixelSize: 16
-                                                color: "#06133b"
+                                        }
+
+                                        MouseArea {
+                                            id: itemMouseArea
+                                            anchors.fill: parent
+                                            hoverEnabled: rowItem.isInteractive
+                                            cursorShape: rowItem.isInteractive ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                            onClicked: {
+                                                if (modelData.type === "wifi") {
+                                                    if (modelData.active) {
+                                                        Info.NetInfo.disconnect(modelData.title);
+                                                    } else if (Info.NetInfo.isSaved(modelData.title) || !modelData.isSecure) {
+                                                        contentRoot.expandedSsid = "";
+                                                        Info.NetInfo.connect(modelData.title, "", modelData.bssid);
+                                                    } else {
+                                                        if (contentRoot.expandedSsid === modelData.title) {
+                                                            contentRoot.expandedSsid = "";
+                                                        } else {
+                                                            contentRoot.expandedSsid = modelData.title;
+                                                        }
+                                                    }
+                                                } else if (modelData.type === "bt") {
+                                                    Info.BluetoothInfo.toggleDevice(modelData.raw);
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Inline Password Field for New Secured Wifi
+                                    Item {
+                                        id: inlinePasswordSection
+                                        visible: rowItem.isExpanded
+                                        opacity: rowItem.isExpanded ? 1 : 0
+                                        anchors {
+                                            left: parent.left
+                                            right: parent.right
+                                            top: headerRow.bottom
+                                            bottom: parent.bottom
+                                            leftMargin: 14
+                                            rightMargin: 14
+                                            bottomMargin: 10
+                                        }
+
+                                        Behavior on opacity {
+                                            NumberAnimation { duration: 150 }
+                                        }
+
+                                        Row {
+                                            anchors.fill: parent
+                                            spacing: 10
+
+                                            Rectangle {
+                                                id: inputContainer
+                                                width: parent.width - 120
+                                                height: 40
+                                                color: "#050b28"
+                                                border.color: pwdInput.activeFocus ? "#8df6ff" : "#28397a"
+                                                border.width: 1.5
+                                                radius: 3
+                                                anchors.verticalCenter: parent.verticalCenter
+
+                                                TextInput {
+                                                    id: pwdInput
+                                                    anchors {
+                                                        fill: parent
+                                                        leftMargin: 12
+                                                        rightMargin: 12
+                                                    }
+                                                    verticalAlignment: TextInput.AlignVCenter
+                                                    font.family: "Montserrat"
+                                                    font.pixelSize: 15
+                                                    color: "#f2fcff"
+                                                    echoMode: TextInput.Password
+                                                    clip: true
+                                                    selectByMouse: true
+                                                    selectionColor: "#8df6ff"
+                                                    selectedTextColor: "#06133b"
+
+                                                    Text {
+                                                        anchors {
+                                                            left: parent.left
+                                                            verticalCenter: parent.verticalCenter
+                                                        }
+                                                        text: "Enter Password..."
+                                                        font.family: "Montserrat"
+                                                        font.pixelSize: 14
+                                                        color: "#5f72a6"
+                                                        visible: !pwdInput.text && !pwdInput.activeFocus
+                                                    }
+
+                                                    onAccepted: {
+                                                        if (pwdInput.text.length > 0) {
+                                                            Info.NetInfo.connect(modelData.title, pwdInput.text, modelData.bssid);
+                                                            contentRoot.expandedSsid = "";
+                                                            pwdInput.text = "";
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            Item {
+                                                width: 70
+                                                height: 40
+                                                anchors.verticalCenter: parent.verticalCenter
+
+                                                Canvas {
+                                                    id: btnCanvas
+                                                    anchors.fill: parent
+                                                    onPaint: {
+                                                        var ctx = getContext("2d");
+                                                        ctx.clearRect(0, 0, width, height);
+                                                        ctx.beginPath();
+                                                        ctx.moveTo(0, 0);
+                                                        ctx.lineTo(width, 0);
+                                                        ctx.lineTo(width - 6, height);
+                                                        ctx.lineTo(0, height);
+                                                        ctx.closePath();
+                                                        ctx.fillStyle = connectBtnArea.containsMouse ? "#c2faff" : "#8df6ff";
+                                                        ctx.fill();
+                                                    }
+                                                }
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: "JOIN"
+                                                    font.family: "Montserrat"
+                                                    font.pixelSize: 14
+                                                    font.bold: true
+                                                    color: "#06133b"
+                                                }
+
+                                                MouseArea {
+                                                    id: connectBtnArea
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        if (pwdInput.text.length > 0) {
+                                                            Info.NetInfo.connect(modelData.title, pwdInput.text, modelData.bssid);
+                                                            contentRoot.expandedSsid = "";
+                                                            pwdInput.text = "";
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            Rectangle {
+                                                width: 32
+                                                height: 40
+                                                color: cancelBtnArea.containsMouse ? Qt.rgba(1, 0, 0, 0.3) : "transparent"
+                                                border.color: cancelBtnArea.containsMouse ? "#ff6b6b" : "#344585"
+                                                border.width: 1
+                                                radius: 2
+                                                anchors.verticalCenter: parent.verticalCenter
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: "✕"
+                                                    font.pixelSize: 14
+                                                    color: cancelBtnArea.containsMouse ? "#ff6b6b" : "#8ca0d3"
+                                                }
+
+                                                MouseArea {
+                                                    id: cancelBtnArea
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        contentRoot.expandedSsid = "";
+                                                        pwdInput.text = "";
+                                                    }
+                                                }
                                             }
                                         }
                                     }
