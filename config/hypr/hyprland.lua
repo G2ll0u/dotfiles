@@ -57,8 +57,9 @@ local menu = "hyprlauncher"
     hl.exec_cmd("hypridle")
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
     hl.exec_cmd("wl-paste --type image --watch cliphist store")
-   hl.exec_cmd("waybar & hyprpaper & firefox")
- end)
+    hl.exec_cmd("waybar & hyprpaper")
+    hl.exec_cmd(os.getenv("HOME") .. "/.local/bin/replay.sh start")
+end)
 
 
 -------------------------------
@@ -335,6 +336,15 @@ hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("cliphist list | rofi -dmenu -p 'Pres
 
 -- Sélecteur d'émojis Rofi avec saisie automatique
 hl.bind(mainMod .. " + semicolon", hl.dsp.exec_cmd("rofi -modi emoji -show emoji -emoji-format '{emoji}' | head -n 1 | tr -d '\\n' | wtype -"))
+
+-- Autoclicker
+hl.bind(mainMod .. " + ALT + C", hl.dsp.exec_cmd(os.getenv("HOME") .. "/.local/bin/autoclick.sh"))
+
+-- Instant Replay
+hl.bind(mainMod .. " + SHIFT + F", hl.dsp.exec_cmd(os.getenv("HOME") .. "/.local/bin/replay.sh save"))
+
+-- Quick Macro non-bloquante (Super + M par exemple)
+hl.bind(mainMod .. "+ M", hl.dsp.exec_cmd(os.getenv("HOME") .. "/.local/bin/quick_macro.sh"))
 
 --------------------------------
 ---- WINDOWS AND WORKSPACES ----
