@@ -16,9 +16,12 @@ Scope {
         target: root
         function onShouldShowChanged() {
             Info.SysInfo.active = root.shouldShow;
+            Info.AudioInfo.active = root.shouldShow;
             if (root.shouldShow) {
                 Info.NetInfo.scanNetworks();
-                contentRoot.expandedSsid = "";
+                Info.AudioInfo.update();
+                if (typeof contentRoot !== "undefined" && contentRoot)
+                    contentRoot.expandedSsid = "";
             }
         }
     }
@@ -116,6 +119,12 @@ Scope {
                                 title: "Bluetooth",
                                 subtitle: "Bluetooth Devices",
                                 rank: 5
+                            },
+                            {
+                                badge: "IV",
+                                title: "Audio",
+                                subtitle: "Audio Inputs and Outputs",
+                                rank: 6
                             },
                         ]
                         Item {
@@ -345,8 +354,8 @@ Scope {
                             top: parent.top
                         }
                         height: 92
-                        property string indexText: ["01", "02", "03"][detailPanel.parent.activeCard]
-                        property string titleText: ["System Stats", "Wifi networks", "Bluetooth devices"][detailPanel.parent.activeCard]
+                        property string indexText: ["01", "02", "03", "04"][detailPanel.parent.activeCard]
+                        property string titleText: ["System Stats", "Wifi networks", "Bluetooth devices", "Audio devices"][detailPanel.parent.activeCard]
                         onIndexTextChanged: requestPaint()
                         Connections {
                             target: root
@@ -412,7 +421,7 @@ Scope {
                             Repeater {
                                 model: {
                                     var ac = detailPanel.parent.activeCard;
-                                    var _ = Info.SysInfo.cpuUsage + Info.SysInfo.memUsage + Info.SysInfo.vramUsage + Info.SysInfo.diskUsage + (Info.NetInfo.connectingSsid ? 1 : 0);
+                                    var _ = Info.SysInfo.cpuUsage + Info.SysInfo.memUsage + Info.SysInfo.vramUsage + Info.SysInfo.diskUsage + (Info.NetInfo.connectingSsid ? 1 : 0) + (Info.AudioInfo.devices.length ? 1 : 0) + Info.AudioInfo.defaultSink + Info.AudioInfo.defaultSource;
                                     return [
                                         [
                                             {
@@ -472,7 +481,23 @@ Scope {
                                             connected: d.connected,
                                             paired: d.paired
                                         })),
-                                        []
+                                        Info.AudioInfo.devices.length === 0 ? [
+                                            {
+                                                type: "audio_empty",
+                                                title: "No Audio Devices",
+                                                status: "N/A"
+                                            }
+                                        ] : Info.AudioInfo.devices.map(a => ({
+                                            type: "audio",
+                                            raw: a,
+                                            title: a.description || a.name,
+                                            kind: a.kind,
+                                            subkind: a.kind === "sink" ? "OUTPUT" : "INPUT",
+                                            isDefault: a.isDefault,
+                                            muted: a.muted,
+                                            volume: a.volumePercent,
+                                            status: a.isDefault ? (a.muted ? "MUTED" : (a.volumePercent ? a.volumePercent : "ACTIVE")) : (a.kind === "sink" ? "OUTPUT" : "INPUT")
+                                        }))
                                     ][ac];
                                 }
 
@@ -483,7 +508,7 @@ Scope {
                                     height: isExpanded ? 114 : 56
                                     clip: true
 
-                                    readonly property bool isInteractive: modelData.type === "wifi" || modelData.type === "bt"
+                                    readonly property bool isInteractive: modelData.type === "wifi" || modelData.type === "bt" || modelData.type === "audio"
                                     readonly property bool isExpanded: modelData.type === "wifi" && contentRoot.expandedSsid === modelData.title
                                     readonly property bool isConnecting: modelData.type === "wifi" && Info.NetInfo.connectingSsid === modelData.title
                                     readonly property bool isHovered: itemMouseArea.containsMouse
@@ -528,6 +553,26 @@ Scope {
                                             }
                                             spacing: 12
 
+                                            Rectangle {
+                                                visible: modelData.type === "audio"
+                                                width: 66
+                                                height: 24
+                                                radius: 3
+                                                color: modelData.kind === "sink" ? Qt.rgba(14/255, 140/255, 255/255, 0.25) : Qt.rgba(255/255, 170/255, 50/255, 0.25)
+                                                border.color: modelData.kind === "sink" ? "#4da6ff" : "#ffa64d"
+                                                border.width: 1
+                                                anchors.verticalCenter: parent.verticalCenter
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: modelData.kind === "sink" ? "OUTPUT" : "INPUT"
+                                                    font.family: "Montserrat"
+                                                    font.pixelSize: 11
+                                                    font.bold: true
+                                                    color: modelData.kind === "sink" ? "#8df6ff" : "#ffd56b"
+                                                }
+                                            }
+
                                             Text {
                                                 text: modelData.title
                                                 font.family: "Montserrat"
@@ -535,7 +580,7 @@ Scope {
                                                 font.bold: rowItem.isHovered && rowItem.isInteractive
                                                 color: (rowItem.isHovered && rowItem.isInteractive) ? "#8df6ff" : "#f2fcff"
                                                 elide: Text.ElideRight
-                                                width: Math.min(implicitWidth, parent.width - statusBadge.width - (modelData.isSecure ? 50 : 26))
+                                                width: Math.min(implicitWidth, parent.width - statusBadge.width - (modelData.isSecure ? 50 : 26) - (modelData.type === "audio" ? 78 : 0))
                                                 anchors.verticalCenter: parent.verticalCenter
                                             }
 
@@ -584,10 +629,12 @@ Scope {
                                                         ctx.lineTo(width - 8, height);
                                                         ctx.lineTo(0, height);
                                                         ctx.closePath();
-                                                        if (modelData.active || modelData.connected) {
+                                                        if (modelData.active || modelData.connected || modelData.isDefault) {
                                                             ctx.fillStyle = "#8df6ff";
                                                         } else if (modelData.type === "wifi" && Info.NetInfo.connectingSsid === modelData.title) {
                                                             ctx.fillStyle = "#ffd56b";
+                                                        } else if (modelData.type === "audio") {
+                                                            ctx.fillStyle = rowItem.isHovered ? "#8df6ff" : "rgba(141, 246, 255, 0.25)";
                                                         } else {
                                                             ctx.fillStyle = "#8df6ff";
                                                         }
@@ -598,11 +645,20 @@ Scope {
                                                 Text {
                                                     id: statusText
                                                     anchors.centerIn: parent
-                                                    text: modelData.status
+                                                    text: {
+                                                        if (modelData.type === "audio") {
+                                                            if (modelData.isDefault) {
+                                                                return modelData.muted ? "MUTED" : (modelData.volume ? modelData.volume : "ACTIVE");
+                                                            } else {
+                                                                return rowItem.isHovered ? "SWITCH" : (modelData.kind === "sink" ? "OUTPUT" : "INPUT");
+                                                            }
+                                                        }
+                                                        return modelData.status;
+                                                    }
                                                     font.family: "Montserrat"
                                                     font.pixelSize: 16
                                                     font.bold: true
-                                                    color: "#06133b"
+                                                    color: (modelData.type === "audio" && !modelData.isDefault && !rowItem.isHovered) ? "#8df6ff" : "#06133b"
                                                 }
                                             }
                                         }
@@ -628,6 +684,8 @@ Scope {
                                                     }
                                                 } else if (modelData.type === "bt") {
                                                     Info.BluetoothInfo.toggleDevice(modelData.raw);
+                                                } else if (modelData.type === "audio") {
+                                                    Info.AudioInfo.toggleDevice(modelData.raw);
                                                 }
                                             }
                                         }
