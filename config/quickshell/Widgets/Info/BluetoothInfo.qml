@@ -30,4 +30,28 @@ Singleton {
     property list<var> pairedButNotConnectedDevices: Bluetooth.devices.values.filter(d => d.paired && !d.connected).sort(sortFunction)
     property list<var> unpairedDevices: Bluetooth.devices.values.filter(d => !d.paired && !d.connected).sort(sortFunction)
     property list<var> friendlyDeviceList: [...connectedDevices, ...pairedButNotConnectedDevices, ...unpairedDevices]
+
+    Process {
+        id: btProc
+        running: false
+    }
+
+    function toggleDevice(device): void {
+        if (!device) return;
+        const target = device.address || device.name;
+        if (!target) return;
+        if (device.connected) {
+            btProc.command = ["bluetoothctl", "disconnect", target];
+        } else {
+            btProc.command = ["bluetoothctl", "connect", target];
+        }
+        btConnectTimer.start();
+        btProc.running = true;
+    }
+
+    Timer {
+        id: btConnectTimer
+        interval: 1500
+        repeat: false
+    }
 }

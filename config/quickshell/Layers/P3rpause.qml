@@ -12,12 +12,12 @@ Scope {
 
     Process {
         id: poweroffProcess
-        command: ["loginctl", "poweroff"]
+        command: ["systemctl", "poweroff"]
         running: false
     }
     Process {
         id: restartProcess
-        command: ["loginctl", "reboot"]
+        command: ["systemctl", "reboot"]
         running: false
     }
     Process {
@@ -261,6 +261,7 @@ Scope {
             width: parent.width * 0.4
             height: parent.height * 0.4
             hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
             onEntered: powerItemRoot.hovered = true
             onExited: powerItemRoot.hovered = false
             onClicked: powerItemRoot.action()

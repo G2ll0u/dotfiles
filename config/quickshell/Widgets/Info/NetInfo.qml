@@ -12,6 +12,9 @@ Singleton {
     readonly property AccessPoint active: networks.find(n => n.active) ?? null
     property bool wifiEnabled: false
     readonly property bool scanning: rescanProc.running
+    property var savedConnections: []
+    property string connectingSsid: ""
+    property string connectError: ""
 
     // Convenience props (drop-in replacements for old networkName / networkStrength / wifiStatus)
     readonly property bool connected: active !== null
@@ -37,11 +40,78 @@ Singleton {
 
     function scanNetworks(): void {
         getNetworks.running = true;
+        savedConnProc.running = true;
     }
 
     function update(): void {
         wifiStatusProc.running = true;
         getNetworks.running = true;
+        savedConnProc.running = true;
+    }
+
+    function isSaved(ssid): bool {
+        if (!ssid) return false;
+        return savedConnections.indexOf(ssid) !== -1;
+    }
+
+    function connect(ssid, password, bssid): void {
+        if (!ssid) return;
+        connectingSsid = ssid;
+        connectError = "";
+        if (password && password.length > 0) {
+            connectProc.command = ["nmcli", "dev", "wifi", "connect", bssid || ssid, "password", password];
+        } else {
+            connectProc.command = ["nmcli", "dev", "wifi", "connect", bssid || ssid];
+        }
+        connectProc.running = true;
+    }
+
+    function disconnect(ssid): void {
+        if (!ssid) return;
+        connectingSsid = ssid;
+        connectError = "";
+        disconnectProc.command = ["nmcli", "con", "down", "id", ssid];
+        disconnectProc.running = true;
+    }
+
+    // ── Saved connections fetch ───────────────────────────────────
+    Process {
+        id: savedConnProc
+        running: true
+        command: ["sh", "-c", "nmcli -t -f NAME,TYPE connection show | grep ':802-11-wireless' | cut -d: -f1"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.savedConnections = text.trim().split("\n").map(s => s.trim()).filter(s => s.length > 0);
+            }
+        }
+    }
+
+    // ── Connect process ───────────────────────────────────────────
+    Process {
+        id: connectProc
+        stderr: StdioCollector {
+            onStreamFinished: {
+                if (text.trim().length > 0 && !text.includes("successfully activated") && !text.includes("activée avec succès")) {
+                    root.connectError = text.trim();
+                }
+            }
+        }
+        onExited: (code) => {
+            root.connectingSsid = "";
+            if (code !== 0 && !root.connectError) {
+                root.connectError = "Failed to connect";
+            }
+            root.update();
+        }
+    }
+
+    // ── Disconnect process ────────────────────────────────────────
+    Process {
+        id: disconnectProc
+        onExited: {
+            root.connectingSsid = "";
+            root.update();
+        }
     }
 
     // ── nmcli monitor ─────────────────────────────────────────────
