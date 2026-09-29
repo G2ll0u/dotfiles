@@ -48,6 +48,7 @@ Scope {
 
             onVisibleChanged: {
                 if (visible) {
+                    Dat.P3rSfx.openMenu();
                     contentVisible = false;
                     calTransition.targetScreen = root.targetScreen;
                     calTransition.shouldShow = true;
@@ -170,6 +171,7 @@ MouseArea {
     anchors.fill: parent
     z: 1
     onWheel: wheel => {
+        Dat.P3rSfx.hover();
         if (wheel.angleDelta.y < 0) {
             root.dayOffset += 1;
         } else if (wheel.angleDelta.y > 0) {
@@ -188,14 +190,17 @@ MouseArea {
     acceptedButtons: Qt.LeftButton | Qt.MiddleButton
     onClicked: mouse => {
         if (mouse.button === Qt.MiddleButton) {
+            Dat.P3rSfx.select();
             root.dayOffset = 0;
         } else {
+            Dat.P3rSfx.back();
             root.shouldShow = false;
         }
     }
 }
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_Escape) {
+                        Dat.P3rSfx.back();
                         root.shouldShow = false;
                         event.accepted = true;
                     }

@@ -43,8 +43,10 @@ Scope {
                 bottom: true
             }
             onVisibleChanged: {
-                if (visible)
+                if (visible) {
+                    Dat.P3rSfx.openMenu();
                     overlay.resetMenu();
+                }
             }
 
             Rectangle {
@@ -215,10 +217,14 @@ Scope {
                     MouseArea {
                         anchors.fill: parent
                         z: -1
-                        onClicked: hideAnimation.start()
+                        onClicked: {
+                            Dat.P3rSfx.back();
+                            hideAnimation.start();
+                        }
                     }
                     Keys.onPressed: event => {
                         if (event.key === Qt.Key_Escape) {
+                            Dat.P3rSfx.back();
                             hideAnimation.start();
                             event.accepted = true;
                         }
@@ -262,9 +268,15 @@ Scope {
             height: parent.height * 0.4
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onEntered: powerItemRoot.hovered = true
+            onEntered: {
+                powerItemRoot.hovered = true;
+                Dat.P3rSfx.hover();
+            }
             onExited: powerItemRoot.hovered = false
-            onClicked: powerItemRoot.action()
+            onClicked: {
+                Dat.P3rSfx.select();
+                powerItemRoot.action();
+            }
         }
     }
 }

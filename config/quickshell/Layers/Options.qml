@@ -2,6 +2,7 @@ import QtQuick
 import QtMultimedia
 import Quickshell
 import Quickshell.Wayland
+import qs.Data as Dat
 import qs.Widgets as Wid
 
 Scope {
@@ -41,7 +42,7 @@ Scope {
             color: "transparent"
             WlrLayershell.layer: WlrLayer.Top
             WlrLayershell.exclusionMode: ExclusionMode.Ignore
-            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             anchors {
                 left: true
                 right: true
@@ -60,6 +61,7 @@ Scope {
 
             onVisibleChanged: {
                 if (visible) {
+                    Dat.P3rSfx.openMenu();
                     contentVisible = false;
                     optionsWindow.activeBar = 0;
                     optionsWindow.barsRevealed = false;
@@ -92,7 +94,30 @@ Scope {
                 MouseArea {
                     anchors.fill: parent
                     z: -1
-                    onClicked: root.shouldShow = false
+                    onClicked: {
+                        Dat.P3rSfx.back();
+                        if (optionsWindow.barsRevealed) {
+                            optionsWindow.barsRevealed = false;
+                        } else {
+                            root.shouldShow = false;
+                        }
+                    }
+                }
+
+                FocusScope {
+                    anchors.fill: parent
+                    focus: visible
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Escape) {
+                            Dat.P3rSfx.back();
+                            if (optionsWindow.barsRevealed) {
+                                optionsWindow.barsRevealed = false;
+                            } else {
+                                root.shouldShow = false;
+                            }
+                            event.accepted = true;
+                        }
+                    }
                 }
 
                 OptionsList {
@@ -263,10 +288,16 @@ Scope {
                                     anchors.fill: parent
                                     hoverEnabled: !optionsWindow.barsRevealed
                                     z: 5
-                                    onEntered: optionsWindow.activeBar = barOuter.index
+                                    onEntered: {
+                                        if (optionsWindow.activeBar !== barOuter.index) {
+                                            optionsWindow.activeBar = barOuter.index;
+                                            Dat.P3rSfx.hover();
+                                        }
+                                    }
                                     onClicked: {
                                         optionsWindow.activeBar = barOuter.index;
                                         optionsWindow.barsRevealed = true;
+                                        Dat.P3rSfx.select();
                                     }
                                 }
                             }

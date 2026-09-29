@@ -184,10 +184,13 @@ Scope {
                     TapHandler {
                         onTapped: {
                             toolskiRoot.isExpanded = !toolskiRoot.isExpanded;
-                            if (toolskiRoot.isExpanded)
+                            if (toolskiRoot.isExpanded) {
+                                Dat.P3rSfx.openMenu();
                                 autoHideTimer.stop();
-                            else
+                            } else {
+                                Dat.P3rSfx.closeMenu();
                                 autoHideTimer.restart();
+                            }
                         }
                     }
                 }
@@ -308,8 +311,10 @@ Scope {
                                 id: bladeHoverHandler
                                 cursorShape: Qt.PointingHandCursor
                                 onHoveredChanged: {
-                                    if (hovered)
+                                    if (hovered) {
                                         autoHideTimer.stop();
+                                        Dat.P3rSfx.hover();
+                                    }
                                 }
                             }
                             MouseArea {
@@ -332,11 +337,21 @@ Scope {
                                 onReleased: mouse => {
                                     var delta = mouse.x - dragStartX;
                                     if (delta > 50) {
+                                        Dat.P3rSfx.select();
                                         modelData.action();
                                         toolskiRoot.isExpanded = false;
                                         toolskiRoot.isHovered = false;
                                     }
                                     blade.x = Qt.binding(() => startX);
+                                }
+                                onClicked: mouse => {
+                                    var delta = mouse.x - dragStartX;
+                                    if (delta <= 50) {
+                                        Dat.P3rSfx.select();
+                                        modelData.action();
+                                        toolskiRoot.isExpanded = false;
+                                        toolskiRoot.isHovered = false;
+                                    }
                                 }
                             }
                             Behavior on x {
@@ -353,6 +368,7 @@ Scope {
                     enabled: toolskiRoot.isExpanded
                     z: -1
                     onClicked: {
+                        Dat.P3rSfx.closeMenu();
                         toolskiRoot.isExpanded = false;
                         autoHideTimer.restart();
                     }

@@ -268,10 +268,20 @@ function toggleShader(index) {
 
                     MouseArea {
                         anchors.fill: parent
+                        hoverEnabled: true
+                        onEntered: {
+                            if (revealRoot.localTab !== index)
+                                Dat.P3rSfx.hover();
+                        }
                         onPressed: tabRect.scale = 0.90
                         onReleased: tabRect.scale = 1.0
                         onCanceled: tabRect.scale = 1.0
-                        onClicked: revealRoot.localTab = index
+                        onClicked: {
+                            if (revealRoot.localTab !== index) {
+                                revealRoot.localTab = index;
+                                Dat.P3rSfx.tab();
+                            }
+                        }
                     }
                 }
             }
@@ -362,10 +372,19 @@ function toggleShader(index) {
 
             MouseArea {
                 anchors.fill: parent
+                hoverEnabled: true
+                onEntered: Dat.P3rSfx.hover()
                 onPressed: lowerBar.scale = 0.97
                 onReleased: lowerBar.scale = 1.0
                 onCanceled: lowerBar.scale = 1.0
-                onClicked: revealRoot.toggleShader(revealRoot.localTab)
+                onClicked: {
+                    var willBeActive = revealRoot.activeShaderIndex !== revealRoot.localTab;
+                    if (willBeActive)
+                        Dat.P3rSfx.switchOn();
+                    else
+                        Dat.P3rSfx.switchOff();
+                    revealRoot.toggleShader(revealRoot.localTab);
+                }
             }
         }
     }

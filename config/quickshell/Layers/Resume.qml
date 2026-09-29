@@ -46,6 +46,7 @@ Scope {
             }
             onVisibleChanged: {
                 if (visible) {
+                    Dat.P3rSfx.openMenu();
                     contentVisible = false;
                     resumeTransition.targetScreen = root.targetScreen;
                     resumeTransition.shouldShow = true;
@@ -296,12 +297,19 @@ Scope {
 
                             HoverHandler {
                                 onHoveredChanged: {
-                                    if (hovered)
-                                        contentRoot.activeCard = cardWrap.index;
+                                    if (hovered) {
+                                        if (contentRoot.activeCard !== cardWrap.index) {
+                                            contentRoot.activeCard = cardWrap.index;
+                                            Dat.P3rSfx.hover();
+                                        }
+                                    }
                                 }
                             }
                             TapHandler {
-                                onTapped: contentRoot.activeCard = cardWrap.index
+                                onTapped: {
+                                    contentRoot.activeCard = cardWrap.index;
+                                    Dat.P3rSfx.select();
+                                }
                             }
                         }
                     }
@@ -668,7 +676,13 @@ Scope {
                                             anchors.fill: parent
                                             hoverEnabled: rowItem.isInteractive
                                             cursorShape: rowItem.isInteractive ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                            onEntered: {
+                                                if (rowItem.isInteractive)
+                                                    Dat.P3rSfx.hover();
+                                            }
                                             onClicked: {
+                                                if (rowItem.isInteractive)
+                                                    Dat.P3rSfx.select();
                                                 if (modelData.type === "wifi") {
                                                     if (modelData.active) {
                                                         Info.NetInfo.disconnect(modelData.title);
@@ -846,10 +860,14 @@ Scope {
                 MouseArea {
                     anchors.fill: parent
                     z: -1
-                    onClicked: root.shouldShow = false
+                    onClicked: {
+                        Dat.P3rSfx.back();
+                        root.shouldShow = false;
+                    }
                 }
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_Escape) {
+                        Dat.P3rSfx.back();
                         root.shouldShow = false;
                         event.accepted = true;
                     }
